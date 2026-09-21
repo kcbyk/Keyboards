@@ -60,7 +60,8 @@ class MusicDownloadService : Service() {
                 } while (status.durum != "bitti" || status.dosyaUrl == null)
 
                 // 3. DOSYA İNDİR
-                val fileUrl = if (status.dosyaUrl!!.startsWith("http")) status.dosyaUrl else MusicApiClient.DOWNLOAD_BASE.trimEnd('/') + status.dosyaUrl + "?key=$apiKey"
+                val rawUrl = status.dosyaUrl ?: throw Exception("Dosya URL yok")
+                val fileUrl = if (rawUrl.startsWith("http")) rawUrl else MusicApiClient.DOWNLOAD_BASE.trimEnd('/') + rawUrl + "?key=$apiKey"
                 val fileName = sanitize(status.dosya ?: "$title.mp3")
 
                 updateNotif("İndiriliyor: $fileName", 90)
