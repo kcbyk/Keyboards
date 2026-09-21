@@ -25,9 +25,12 @@ class MusicDownloadService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val query = intent?.getStringExtra(Constants.INTENT_EXTRA_QUERY) ?: run {
+        val rawQuery = intent?.getStringExtra(Constants.INTENT_EXTRA_QUERY) ?: run {
             stopSelf(); return START_NOT_STICKY
         }
+        // Eğer direct_url (YouTube linki) varsa onu kullan, daha doğru sonuç verir
+        val directUrl = intent.getStringExtra("direct_url")
+        val query = if (!directUrl.isNullOrEmpty() && directUrl.contains("youtube.com")) directUrl else rawQuery
         val apiKey = intent.getStringExtra("api_key") ?: Constants.API_KEY
 
         val notif = buildNotif("İstek alındı: $query", 0, true)

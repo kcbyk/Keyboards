@@ -6,32 +6,35 @@
     android:background="#202124"
     android:padding="6dp">
 
-    <!-- ÜST BAR: Gboard tarzı arama -->
+    <!-- TOP BAR - Gboard tarzı, sağda müzik mod butonu -->
     <LinearLayout
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="#202124"
-        android:padding="4dp"
+        android:padding="2dp"
         android:layout_marginBottom="6dp">
 
+        <!-- Arama kutusu - sadece müzik modunda görünür -->
         <LinearLayout
+            android:id="@+id/searchBarContainer"
             android:layout_width="0dp"
             android:layout_height="44dp"
             android:layout_weight="1"
             android:orientation="horizontal"
             android:background="@drawable/search_bg"
             android:gravity="center_vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="8dp">
+            android:paddingStart="12dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🎵"
-                android:textSize="16sp"
-                android:layout_marginEnd="8dp"/>
+                android:text="🔍"
+                android:textSize="14sp"
+                android:layout_marginEnd="6dp"/>
 
             <EditText
                 android:id="@+id/etSearch"
@@ -45,48 +48,121 @@
                 android:textSize="14sp"
                 android:singleLine="true"
                 android:imeOptions="actionSearch"
-                android:fontFamily="sans-serif"
                 android:padding="0dp"/>
 
             <TextView
                 android:id="@+id/btnClearSearch"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:text="✕"
                 android:textColor="#9AA0A6"
                 android:gravity="center"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/btnSearchAction"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:text="ARA"
+                android:textSize="11sp"
+                android:textColor="#202124"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:background="@drawable/key_bg_enter"/>
         </LinearLayout>
 
+        <!-- Klavye modunda gösterilen küçük bar -->
+        <LinearLayout
+            android:id="@+id/keyboardTopBar"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MusicBoard"
+                android:textColor="#9AA0A6"
+                android:textSize="11sp"
+                android:layout_marginStart="8dp"/>
+
+        </LinearLayout>
+
+        <!-- SAĞDAKİ İKON BUTONLAR -->
         <TextView
-            android:id="@+id/btnSearchAndType"
-            android:layout_width="48dp"
+            android:id="@+id/btnToggleMusicMode"
+            android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_marginStart="6dp"
-            android:text="Aa"
-            android:textSize="12sp"
-            android:textColor="#E8EAED"
+            android:text="🎵"
+            android:textSize="18sp"
             android:gravity="center"
-            android:background="@drawable/key_bg_action"
-            android:fontFamily="sans-serif-medium"/>
+            android:background="@drawable/key_bg_normal"/>
 
         <TextView
             android:id="@+id/btnDownload"
-            android:layout_width="72dp"
+            android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_marginStart="6dp"
-            android:text="İNDİR"
-            android:textSize="12sp"
+            android:text="⬇"
+            android:textSize="16sp"
             android:textColor="#202124"
-            android:textStyle="bold"
             android:gravity="center"
             android:background="@drawable/key_bg_enter"
-            android:fontFamily="sans-serif-medium"/>
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/btnSearchAndType"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"/>
 
     </LinearLayout>
 
-    <!-- KLAVYE ALANI - Gboard tarzı -->
+    <!-- MÜZİK MODU - Şarkı listesi -->
+    <LinearLayout
+        android:id="@+id/musicModeContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:background="#202124">
+
+        <TextView
+            android:id="@+id/tvSearchStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔍 Şarkı adı yaz ve ARA'ya bas"
+            android:textColor="#9AA0A6"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:padding="8dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvSongs"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:background="#202124"
+            android:clipToPadding="false"
+            android:padding="2dp"/>
+
+        <TextView
+            android:id="@+id/btnBackToKeyboard"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:text="⌨ Klavyeye Dön"
+            android:textColor="#E8EAED"
+            android:gravity="center"
+            android:background="@drawable/key_bg_action"
+            android:layout_marginTop="6dp"
+            android:textSize="13sp"/>
+
+    </LinearLayout>
+
+    <!-- KLAVYE MODU - Gboard tarzı tuşlar -->
     <LinearLayout
         android:id="@+id/keysContainer"
         android:layout_width="match_parent"
@@ -94,53 +170,17 @@
         android:orientation="vertical"
         android:background="#202124">
 
-        <!-- Row 1: q w e r t y u ı o p -->
-        <LinearLayout
-            android:id="@+id/row1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="6dp"/>
-
-        <!-- Row 2: a s d f g h j k l -->
-        <LinearLayout
-            android:id="@+id/row2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="6dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"/>
-
-        <!-- Row 3: Shift z x c v b n m Delete -->
-        <LinearLayout
-            android:id="@+id/row3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="6dp"/>
-
-        <!-- Row 4: ?123 , Space . Enter -->
-        <LinearLayout
-            android:id="@+id/row4"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="4dp"/>
+        <LinearLayout android:id="@+id/row1" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="6dp"/>
+        <LinearLayout android:id="@+id/row2" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="6dp" android:paddingStart="12dp" android:paddingEnd="12dp"/>
+        <LinearLayout android:id="@+id/row3" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="6dp"/>
+        <LinearLayout android:id="@+id/row4" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginBottom="4dp"/>
 
     </LinearLayout>
 
-    <View
-        android:layout_width="120dp"
-        android:layout_height="4dp"
-        android:layout_gravity="center"
-        android:background="#5F6368"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="2dp"
-        android:alpha="0.5"/>
+    <!-- Alt çizgi -->
+    <View android:layout_width="120dp" android:layout_height="4dp" android:layout_gravity="center" android:background="#5F6368" android:layout_marginTop="6dp" android:alpha="0.5"/>
+
+    <!-- Özel karakter popup için anchor -->
+    <FrameLayout android:id="@+id/popupAnchor" android:layout_width="match_parent" android:layout_height="1dp"/>
 
 </LinearLayout>
