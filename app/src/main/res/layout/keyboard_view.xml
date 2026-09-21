@@ -3,83 +3,144 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#121212"
+    android:background="#202124"
     android:padding="6dp">
 
-    <!-- ÜST BAR: Arama + İndir -->
+    <!-- ÜST BAR: Gboard tarzı arama -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="#1E1E1E"
-        android:padding="8dp">
+        android:background="#202124"
+        android:padding="4dp"
+        android:layout_marginBottom="6dp">
 
-        <EditText
-            android:id="@+id/etSearch"
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:layout_weight="1"
-            android:background="#2A2A2A"
-            android:hint="Şarkı adı yaz... örn: tarkan kuzu kuzu"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#888888"
-            android:padding="12dp"
-            android:singleLine="true"
-            android:textSize="14sp"
-            android:imeOptions="actionSearch" />
+            android:orientation="horizontal"
+            android:background="@drawable/search_bg"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp">
 
-        <Button
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎵"
+                android:textSize="16sp"
+                android:layout_marginEnd="8dp"/>
+
+            <EditText
+                android:id="@+id/etSearch"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="Şarkı ara..."
+                android:textColor="#E8EAED"
+                android:textColorHint="#9AA0A6"
+                android:textSize="14sp"
+                android:singleLine="true"
+                android:imeOptions="actionSearch"
+                android:fontFamily="sans-serif"
+                android:padding="0dp"/>
+
+            <TextView
+                android:id="@+id/btnClearSearch"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="✕"
+                android:textColor="#9AA0A6"
+                android:gravity="center"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:visibility="gone"/>
+        </LinearLayout>
+
+        <TextView
             android:id="@+id/btnSearchAndType"
-            android:layout_width="60dp"
-            android:layout_height="48dp"
+            android:layout_width="48dp"
+            android:layout_height="44dp"
             android:layout_marginStart="6dp"
-            android:text="YAZ"
+            android:text="Aa"
             android:textSize="12sp"
-            android:textStyle="bold"/>
+            android:textColor="#E8EAED"
+            android:gravity="center"
+            android:background="@drawable/key_bg_action"
+            android:fontFamily="sans-serif-medium"/>
 
-        <Button
+        <TextView
             android:id="@+id/btnDownload"
-            android:layout_width="80dp"
-            android:layout_height="48dp"
+            android:layout_width="72dp"
+            android:layout_height="44dp"
             android:layout_marginStart="6dp"
             android:text="İNDİR"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#1DB954"
+            android:textSize="12sp"
+            android:textColor="#202124"
             android:textStyle="bold"
-            android:textSize="13sp" />
+            android:gravity="center"
+            android:background="@drawable/key_bg_enter"
+            android:fontFamily="sans-serif-medium"/>
 
     </LinearLayout>
 
-    <TextView
+    <!-- KLAVYE ALANI - Gboard tarzı -->
+    <LinearLayout
+        android:id="@+id/keysContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="↓ QWERTY KLAVYE ↓"
-        android:textColor="#1DB954"
-        android:textSize="10sp"
-        android:gravity="center"
-        android:padding="4dp"
-        android:background="#0A0A0A"/>
+        android:orientation="vertical"
+        android:background="#202124">
 
-    <!-- KLAVYE TUŞLARI -->
-    <GridLayout
-        android:id="@+id/keyGrid"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:columnCount="10"
-        android:alignmentMode="alignMargins"
-        android:useDefaultMargins="false"
+        <!-- Row 1: q w e r t y u ı o p -->
+        <LinearLayout
+            android:id="@+id/row1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="6dp"/>
+
+        <!-- Row 2: a s d f g h j k l -->
+        <LinearLayout
+            android:id="@+id/row2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="6dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"/>
+
+        <!-- Row 3: Shift z x c v b n m Delete -->
+        <LinearLayout
+            android:id="@+id/row3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="6dp"/>
+
+        <!-- Row 4: ?123 , Space . Enter -->
+        <LinearLayout
+            android:id="@+id/row4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="4dp"/>
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="120dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center"
+        android:background="#5F6368"
         android:layout_marginTop="6dp"
-        android:background="#000000"
-        android:padding="4dp"/>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="🎵 MusicBoard v1.0 - Arama yap ve indir"
-        android:textColor="#666666"
-        android:textSize="10sp"
-        android:gravity="center"
-        android:paddingTop="6dp"/>
+        android:layout_marginBottom="2dp"
+        android:alpha="0.5"/>
 
 </LinearLayout>
