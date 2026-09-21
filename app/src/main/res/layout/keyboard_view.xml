@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#121212"
+    android:padding="4dp">
+
+    <!-- ÜST BAR: Arama + İndir -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#1E1E1E"
+        android:padding="6dp">
+
+        <EditText
+            android:id="@+id/etSearch"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@android:drawable/edit_text"
+            android:hint="Şarkı adı yaz..."
+            android:textColor="#FFFFFF"
+            android:textColorHint="#888888"
+            android:padding="8dp"
+            android:singleLine="true"
+            android:imeOptions="actionSearch" />
+
+        <Button
+            android:id="@+id/btnSearchAndType"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:text="Yaz"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btnDownload"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:text="İNDİR"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#1DB954"
+            android:textStyle="bold"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+    <!-- KLAVYE TUŞLARI - GridLayout ile hafif yapı -->
+    <GridLayout
+        android:id="@+id/keyGrid"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="12"
+        android:alignmentMode="alignMargins"
+        android:useDefaultMargins="false"
+        android:layout_marginTop="4dp" />
+
+    <!-- ALT BAR: Bilgi -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🎵 MusicKeyboard - Arka planda indirir"
+        android:textColor="#666666"
+        android:textSize="10sp"
+        android:gravity="center"
+        android:paddingTop="2dp"/>
+
+</LinearLayout>

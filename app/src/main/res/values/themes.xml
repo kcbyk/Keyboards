@@ -1,0 +1,4 @@
+<resources>
+    <style name="Theme.MusicKeyboard" parent="Theme.Material3.DayNight">
+    </style>
+</resources>
