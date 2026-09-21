@@ -20,6 +20,7 @@ class MyCustomKeyboard : InputMethodService() {
     private var keyboardView: View? = null
     private var etSearch: EditText? = null
     private var isCaps = false
+    private var isSearchFocused = false
     private val apiKey = "sk-71c69f4de1f4b912957fed45"
 
     override fun onCreate() {
@@ -36,6 +37,22 @@ class MyCustomKeyboard : InputMethodService() {
             val btnSearchAndType = keyboardView!!.findViewById<Button>(R.id.btnSearchAndType)
             val keyGrid = keyboardView!!.findViewById<GridLayout>(R.id.keyGrid)
 
+            // EditText'in kendi klavyesini açmasını engelle - yoksa sonsuz döngü olur
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                etSearch?.showSoftInputOnFocus = false
+            }
+
+            // Focus takibi - arama kutusuna mı yazıyoruz, ana uygulamaya mı?
+            etSearch?.setOnFocusChangeListener { _, hasFocus ->
+                isSearchFocused = hasFocus
+                Log.d("MusicKeyboard", "Search focused: $hasFocus")
+            }
+            etSearch?.setOnClickListener {
+                isSearchFocused = true
+                etSearch?.requestFocus()
+                Log.d("MusicKeyboard", "Search clicked, focused=true")
+            }
+
             setupKeys(keyGrid)
 
             btnDownload.setOnClickListener {
@@ -46,20 +63,27 @@ class MyCustomKeyboard : InputMethodService() {
                 }
                 startDownloadService(query)
                 etSearch?.text?.clear()
+                isSearchFocused = false
             }
 
             btnSearchAndType.setOnClickListener {
                 val query = etSearch?.text?.toString()
                 if (!query.isNullOrEmpty()) {
                     currentInputConnection?.commitText(query, 1)
+                    Toast.makeText(this, "Yazıldı: $query", Toast.LENGTH_SHORT).show()
                 }
+            }
+
+            // Varsayılan olarak arama kutusu odaklı başlasın ki kullanıcı direkt şarkı yazabilsin
+            etSearch?.post {
+                etSearch?.requestFocus()
+                isSearchFocused = true
             }
 
             Log.d("MusicKeyboard", "Keyboard view created successfully")
             return keyboardView!!
         } catch (e: Exception) {
             Log.e("MusicKeyboard", "Error creating view", e)
-            // Fallback: basit view
             val fallback = Button(this).apply { text = "HATA: ${e.message}" }
             return fallback
         }
@@ -68,6 +92,8 @@ class MyCustomKeyboard : InputMethodService() {
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
         Log.d("MusicKeyboard", "onStartInput: ${info?.packageName}")
+        // Her yeni input başladığında arama odaklı değil, normal yazma odaklı ol
+        isSearchFocused = false
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -106,20 +132,20 @@ class MyCustomKeyboard : InputMethodService() {
             for (key in row) {
                 val btn = Button(this).apply {
                     text = when(key) {
-                        "SPACE" -> "BOŞLUK"
+                        "SPACE" -> if(isSearchFocused) "BOŞLUK (Arama)" else "BOŞLUK"
                         "DEL" -> "⌫ SİL"
                         "ENTER" -> "↵"
                         "CAPS" -> if(isCaps) "⇧ A" else "⇧ a"
                         else -> if (isCaps) key.uppercase() else key
                     }
-                    textSize = 13f
+                    textSize = 12f
                     isAllCaps = false
-                    setPadding(2,8,2,8)
+                    setPadding(2,12,2,12)
                     setTextColor(0xFFFFFFFF.toInt())
-                    setBackgroundResource(android.R.drawable.btn_default)
-                    // Daha görünür yapmak için
                     if (key == "SPACE") {
-                        setBackgroundColor(0xFF1DB954.toInt())
+                        setBackgroundColor(if(isSearchFocused) 0xFF1DB954.toInt() else 0xFF333333.toInt())
+                    } else {
+                        setBackgroundResource(android.R.drawable.btn_default)
                     }
                     setOnClickListener { onKeyPressed(key) }
                 }
@@ -136,11 +162,51 @@ class MyCustomKeyboard : InputMethodService() {
     }
 
     private fun onKeyPressed(key: String) {
+        Log.d("MusicKeyboard", "Key pressed: $key, searchFocused: $isSearchFocused")
+
+        // Eğer arama kutusu odaklıysa, oraya yaz
+        if (isSearchFocused && etSearch != null) {
+            when (key) {
+                "DEL" -> {
+                    val text = etSearch!!.text
+                    if (text.isNotEmpty()) {
+                        etSearch!!.text.delete(text.length - 1, text.length)
+                    }
+                }
+                "SPACE" -> etSearch!!.text.append(" ")
+                "ENTER" -> {
+                    // Enter'a basınca indir
+                    val query = etSearch?.text?.toString()?.trim()
+                    if (!query.isNullOrEmpty()) {
+                        startDownloadService(query)
+                        etSearch?.text?.clear()
+                    }
+                }
+                "CAPS" -> {
+                    isCaps = !isCaps
+                    keyboardView?.findViewById<GridLayout>(R.id.keyGrid)?.let { setupKeys(it) }
+                }
+                else -> {
+                    val charToCommit = if (isCaps) key.uppercase() else key
+                    etSearch!!.text.append(charToCommit)
+                }
+            }
+            return
+        }
+
+        // Değilse normal uygulamaya yaz
         val ic = currentInputConnection
         if (ic == null) {
             Log.e("MusicKeyboard", "InputConnection null!")
+            // InputConnection yoksa arama kutusuna yazmayı dene
+            if (etSearch != null && key != "DEL" && key != "SPACE" && key != "ENTER" && key != "CAPS") {
+                val charToCommit = if (isCaps) key.uppercase() else key
+                etSearch!!.text.append(charToCommit)
+                isSearchFocused = true
+            }
             return
         }
+
         when (key) {
             "DEL" -> ic.deleteSurroundingText(1, 0)
             "SPACE" -> ic.commitText(" ", 1)
