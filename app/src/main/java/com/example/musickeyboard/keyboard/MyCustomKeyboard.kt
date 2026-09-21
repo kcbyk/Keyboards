@@ -3,6 +3,8 @@ package com.example.musickeyboard.keyboard
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
@@ -29,58 +31,51 @@ class MyCustomKeyboard : InputMethodService() {
     private var isMusicMode = false
     private val apiKey = "sk-71c69f4de1f4b912957fed45"
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val handler = Handler(Looper.getMainLooper())
 
     private val row1Keys = listOf("q","w","e","r","t","y","u","ı","o","p")
     private val row2Keys = listOf("a","s","d","f","g","h","j","k","l")
     private val row3Keys = listOf("SHIFT","z","x","c","v","b","n","m","DEL")
     private val row4Keys = listOf("?123",",","SPACE",".","ENTER")
 
-    // Genişletilmiş Türkçe + tüm harfler için özel karakterler
     private val altCharsMap = mapOf(
-        "a" to listOf("a","á","à","â","ä","ã","å","æ"),
-        "e" to listOf("e","é","è","ê","ë","ē"),
-        "i" to listOf("i","í","ì","î","ï","ī"),
-        "ı" to listOf("ı","i","î","í"),
-        "o" to listOf("o","ó","ò","ô","ö","õ","ø"),
-        "ö" to listOf("ö","o","ó","ô"),
+        "a" to listOf("a","á","à","â","ä","ã","å","æ","ā"),
+        "e" to listOf("e","é","è","ê","ë","ē","ė"),
+        "i" to listOf("i","í","ì","î","ï","ī","ı"),
+        "ı" to listOf("ı","i","î","í","ï"),
+        "o" to listOf("o","ó","ò","ô","ö","õ","ø","ō"),
+        "ö" to listOf("ö","o","ó","ô","õ"),
         "u" to listOf("u","ú","ù","û","ü","ū"),
-        "ü" to listOf("ü","u","ú","û"),
-        "s" to listOf("s","ş","ß","ś"),
-        "ş" to listOf("ş","s","ß"),
-        "g" to listOf("g","ğ","ǧ"),
-        "ğ" to listOf("ğ","g"),
-        "c" to listOf("c","ç","ć","ĉ"),
-        "ç" to listOf("ç","c","ć"),
+        "ü" to listOf("ü","u","ú","û","ū"),
+        "s" to listOf("s","ş","ß","ś","š"),
+        "ş" to listOf("ş","s","ß","ś"),
+        "g" to listOf("g","ğ","ǧ","ģ"),
+        "ğ" to listOf("ğ","g","ǧ"),
+        "c" to listOf("c","ç","ć","ĉ","ċ"),
+        "ç" to listOf("ç","c","ć","ĉ"),
         "q" to listOf("q","ğ"),
-        "n" to listOf("n","ñ","ń"),
+        "n" to listOf("n","ñ","ń","ň"),
         "z" to listOf("z","ž","ź","ż"),
-        "y" to listOf("y","ý","ÿ"),
-        "k" to listOf("k","ķ"),
-        "l" to listOf("l","ł","ļ"),
-        "r" to listOf("r","ř"),
-        "d" to listOf("d","ð"),
-        "t" to listOf("t","ť","ţ"),
-        "b" to listOf("b","ß"),
-        "m" to listOf("m","μ"),
-        "p" to listOf("p","þ"),
-        "h" to listOf("h","ħ"),
-        "j" to listOf("j","ĵ"),
-        "f" to listOf("f","ƒ"),
-        "v" to listOf("v","w"),
-        "w" to listOf("w","v"),
-        "x" to listOf("x","×"),
-        "," to listOf(",", ";", ":", "!", "?", "'", "\""),
-        "." to listOf(".", "…", "·"),
-        "?" to listOf("?","¿","!","¡")
+        "y" to listOf("y","ý","ÿ","ŷ"),
+        "k" to listOf("k","ķ","ƙ"),
+        "l" to listOf("l","ł","ļ","ľ"),
+        "r" to listOf("r","ř","ŗ"),
+        "d" to listOf("d","ð","ď","đ"),
+        "t" to listOf("t","ť","ţ","ț"),
+        "," to listOf(",", ";", ":", "!", "?", "'", "\"", "-", "_"),
+        "." to listOf(".", "…", "·", "•"),
+        "?" to listOf("?","¿","!","¡","!"),
+        "!" to listOf("!","¡","?")
     )
 
-    private var currentPopup: PopupWindow? = null
+    private var currentPopup: android.widget.PopupWindow? = null
     private var currentPopupAlts: List<String> = emptyList()
     private var selectedAltIndex = -1
-    private var popupAnchorView: View? = null
+    private var longPressRunnable: Runnable? = null
+    private var isLongPressTriggered = false
 
     override fun onCreateInputView(): View {
-        Log.d("MusicKeyboard", "onCreateInputView Gboard+Music v2 - fixed popup")
+        Log.d("MusicKeyboard", "onCreateInputView Gboard v3 - fixed typing + download")
         try {
             keyboardView = layoutInflater.inflate(R.layout.keyboard_view, null)
 
@@ -102,14 +97,8 @@ class MyCustomKeyboard : InputMethodService() {
 
             rvSongs?.layoutManager = LinearLayoutManager(this)
             songAdapter = SongAdapter(emptyList()) { song ->
-                // Kartın solundaki butona basıldı -> indirme animasyonu + servis
                 songAdapter?.setDownloading(song)
                 startDownloadService(song.baslik, song.url)
-                // 3 saniye sonra tamamlandı göster
-                scope.launch {
-                    delay(3000)
-                    songAdapter?.setDownloaded(song)
-                }
             }
             rvSongs?.adapter = songAdapter
 
@@ -260,54 +249,76 @@ class MyCustomKeyboard : InputMethodService() {
                 setTextColor(0xFF202124.toInt())
             }
 
-            // Gboard gibi hızlı yazma - basılı tut + kaydır
+            // Gboard gibi: normal basma + uzun basma + kaydırma seçimi
             setOnTouchListener { v, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        // Uzun basma için handler başlat
-                        v.postDelayed({
-                            if (v.isPressed) {
-                                showAltCharsPopupGboard(v, key)
-                            }
-                        }, 400) // 400ms sonra popup göster
+                        isLongPressTriggered = false
                         v.isPressed = true
+                        // 400ms sonra uzun basma popup göster
+                        longPressRunnable = Runnable {
+                            if (v.isPressed) {
+                                isLongPressTriggered = true
+                                showAltCharsPopupGboard(v, key)
+                                v.isPressed = false
+                            }
+                        }
+                        handler.postDelayed(longPressRunnable!!, 400)
+                        true // touch'u biz handle ediyoruz
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        // Popup açıksa, kaydırarak seçim yap
-                        if (currentPopup != null && currentPopup?.isShowing == true) {
+                        if (currentPopup?.isShowing == true) {
                             handlePopupMove(event)
+                            true
+                        } else {
+                            // Eğer parmak çok kaydıysa long press'i iptal et
+                            if (Math.abs(event.x) > dp(20) || Math.abs(event.y) > dp(20)) {
+                                handler.removeCallbacks(longPressRunnable!!)
+                                v.isPressed = false
+                            }
+                            false
                         }
                     }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    MotionEvent.ACTION_UP -> {
+                        handler.removeCallbacks(longPressRunnable!!)
                         v.isPressed = false
-                        v.removeCallbacks(null)
-                        if (currentPopup != null && currentPopup?.isShowing == true) {
-                            // Seçili alt karakteri yaz
+
+                        if (currentPopup?.isShowing == true) {
+                            // Popup açıksa - seçili karakteri yaz
                             if (selectedAltIndex >= 0 && selectedAltIndex < currentPopupAlts.size) {
                                 val selectedChar = currentPopupAlts[selectedAltIndex]
                                 commitAltChar(selectedChar)
+                            } else {
+                                // Hiç seçim yoksa base karakteri yazma, sadece popup kapat
                             }
                             dismissAltPopup()
-                            // Up event'i tüket ki normal click çalışmasın
-                            if (selectedAltIndex >= 0) {
-                                return@setOnTouchListener true
+                            true // event tüketildi
+                        } else {
+                            // Popup yoksa - normal kısa basma
+                            if (!isLongPressTriggered) {
+                                onKeyPressed(key)
                             }
+                            isLongPressTriggered = false
+                            true
                         }
                     }
+                    MotionEvent.ACTION_CANCEL -> {
+                        handler.removeCallbacks(longPressRunnable!!)
+                        v.isPressed = false
+                        dismissAltPopup()
+                        isLongPressTriggered = false
+                        true
+                    }
+                    else -> false
                 }
-                false // Normal click de çalışsın
             }
-
-            setOnClickListener { onKeyPressed(key) }
         }
     }
 
     private fun handlePopupMove(event: MotionEvent) {
-        // Popup içindeki hangi karakterin üstünde olduğunu bul
         val popupView = currentPopup?.contentView as? LinearLayout ?: return
         val x = event.rawX
 
-        // Basit hesaplama - popup içindeki çocukların pozisyonuna göre
         for (i in 0 until popupView.childCount) {
             val child = popupView.getChildAt(i)
             val location = IntArray(2)
@@ -317,14 +328,11 @@ class MyCustomKeyboard : InputMethodService() {
 
             if (x >= childLeft && x <= childRight) {
                 if (selectedAltIndex != i) {
-                    // Önceki seçimi temizle
                     if (selectedAltIndex >= 0 && selectedAltIndex < popupView.childCount) {
                         popupView.getChildAt(selectedAltIndex).setBackgroundResource(R.drawable.key_bg_normal)
                     }
-                    // Yeni seçimi vurgula
                     child.setBackgroundResource(R.drawable.key_bg_enter)
                     selectedAltIndex = i
-                    // Haptic feedback
                     child.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                 }
                 break
@@ -333,20 +341,20 @@ class MyCustomKeyboard : InputMethodService() {
     }
 
     private fun showAltCharsPopupGboard(anchor: View, baseKey: String) {
-        val alts = altCharsMap[baseKey.lowercase()] ?: altCharsMap[baseKey] ?: return
+        val keyLower = baseKey.lowercase()
+        val alts = altCharsMap[keyLower] ?: altCharsMap[baseKey] ?: listOf(baseKey)
         if (alts.isEmpty()) return
 
-        dismissAltPopup() // Önceki popup varsa kapat
+        dismissAltPopup()
 
         currentPopupAlts = alts
-        selectedAltIndex = 0 // İlk karakter seçili başlasın
-        popupAnchorView = anchor
+        selectedAltIndex = 0
 
         val popupView = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundResource(R.drawable.search_bg)
             setPadding(dp(6), dp(6), dp(6), dp(6))
-            elevation = 12f
+            elevation = 16f
         }
 
         for ((index, alt) in alts.withIndex()) {
@@ -357,13 +365,9 @@ class MyCustomKeyboard : InputMethodService() {
                 gravity = Gravity.CENTER
                 setPadding(dp(12), dp(10), dp(12), dp(10))
                 background = if (index == 0) ContextCompat.getDrawable(context, R.drawable.key_bg_enter) else ContextCompat.getDrawable(context, R.drawable.key_bg_normal)
-                // Dokunma ile seçim için
-                setOnTouchListener { _, ev ->
-                    if (ev.action == MotionEvent.ACTION_UP) {
-                        commitAltChar(alt)
-                        dismissAltPopup()
-                    }
-                    true
+                setOnClickListener {
+                    commitAltChar(alt)
+                    dismissAltPopup()
                 }
             }
             val params = LinearLayout.LayoutParams(dp(52), dp(52)).apply {
@@ -372,34 +376,26 @@ class MyCustomKeyboard : InputMethodService() {
             popupView.addView(tv, params)
         }
 
-        // PopupWindow - KLAVYE KAPANMASIN DİYE focusable=false ve INPUT_METHOD_NOT_NEEDED
         val popup = android.widget.PopupWindow(
             popupView,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            false // focusable false -> klavye kapanmaz
+            false
         )
         popup.inputMethodMode = android.widget.PopupWindow.INPUT_METHOD_NOT_NEEDED
         popup.isClippingEnabled = true
-        popup.elevation = 12f
-        // Dışarı dokununca kapanmasın, biz kontrol edeceğiz
-        popup.isOutsideTouchable = false
+        popup.elevation = 16f
+        popup.isOutsideTouchable = true
 
         try {
-            // Anchor'ın üstünde göster
             popup.showAsDropDown(anchor, 0, -dp(70))
             currentPopup = popup
-
-            // Haptic feedback
             anchor.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
 
-            // 4 saniye sonra otomatik kapan
-            anchor.postDelayed({
-                dismissAltPopup()
-            }, 4000)
+            anchor.postDelayed({ dismissAltPopup() }, 4000)
 
         } catch (e: Exception) {
-            Log.e("MusicKeyboard", "Popup show error", e)
+            Log.e("MusicKeyboard", "Popup error", e)
         }
     }
 
@@ -409,7 +405,6 @@ class MyCustomKeyboard : InputMethodService() {
         } else {
             currentInputConnection?.commitText(alt, 1)
         }
-        // Haptic
         keyboardView?.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
@@ -442,7 +437,6 @@ class MyCustomKeyboard : InputMethodService() {
     }
 
     private fun onKeyPressed(key: String) {
-        // Eğer popup açıksa normal tuşa basmayı engelle
         if (currentPopup?.isShowing == true) {
             dismissAltPopup()
             return
@@ -519,6 +513,7 @@ class MyCustomKeyboard : InputMethodService() {
     override fun onDestroy() {
         super.onDestroy()
         dismissAltPopup()
+        handler.removeCallbacksAndMessages(null)
         scope.cancel()
         keyboardView = null
     }
