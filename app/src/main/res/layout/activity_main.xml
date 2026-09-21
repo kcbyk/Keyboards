@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#121212">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp"
     android:gravity="center_horizontal">
@@ -9,50 +14,101 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="🎹 Music Keyboard Kurulum"
-        android:textSize="22sp"
+        android:text="🎹 Music Keyboard"
+        android:textSize="24sp"
         android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Custom IME + MP3 API"
+        android:textSize="12sp"
+        android:textColor="#888888"
         android:layout_marginBottom="16dp"/>
 
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#EEEEEE"
+        android:background="#1E1E1E"
+        android:textColor="#FFFFFF"
         android:padding="12dp"
         android:text="Durum yükleniyor..."
         android:fontFamily="monospace"
-        android:textSize="13sp"
-        android:layout_marginBottom="20dp"/>
+        android:textSize="12sp"
+        android:layout_marginBottom="16dp"/>
 
     <Button
         android:id="@+id/btnEnableKeyboard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="1. Klavyeyi Etkinleştir"
-        android:layout_marginBottom="12dp"/>
+        android:text="1. Klavyeyi Etkinleştir (Ayarlara Git)"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnSwitchKeyboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="2. Klavyeyi Seç (MusicBoard'u Seç)"
+        android:layout_marginBottom="8dp"/>
 
     <Button
         android:id="@+id/btnStoragePerm"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="2. Depolama İzni (Android 11+)"
-        android:layout_marginBottom="12dp"/>
+        android:text="3. Depolama İzni"
+        android:layout_marginBottom="8dp"/>
 
     <Button
         android:id="@+id/btnNotificationPerm"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="3. Bildirim İzni (Android 13+)"
-        android:layout_marginBottom="20dp"/>
+        android:text="4. Bildirim İzni"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- TEST ALANI - Klavyeyi burada test et -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="↓ Klavyeyi burada test et ↓"
+        android:textColor="#1DB954"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/etTest"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1E1E1E"
+        android:textColor="#FFFFFF"
+        android:hint="Buraya dokun, klavye açılsın..."
+        android:textColorHint="#666666"
+        android:padding="16dp"
+        android:minHeight="100dp"
+        android:gravity="top"
+        android:layout_marginBottom="16dp"/>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="⚠️ YASAL UYARI:\nBu klavye sadece telifsiz, kendi ürettiğiniz veya indirme izni olan müzikler için kullanılmalıdır. Spotify, YouTube Music, Apple Music gibi platformlardan DRM korumalı içerik indirmek telif hakkı ihlalidir.\n\nÖnerilen yasal API'lar: Jamendo, Free Music Archive, kendi sunucunuz."
+        android:text="⚠️ Klavye görünmüyorsa:\n1. Yukarıdaki 1. butona bas -> Android Klavye Ayarları -> MusicBoard'u AÇ\n2. 2. butona bas -> MusicBoard'u seç\n3. Bu sayfadaki test alanına dokun"
         android:textSize="11sp"
+        android:textColor="#FFC107"
+        android:background="#332B00"
+        android:padding="10dp"
+        android:layout_marginBottom="12dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="⚠️ YASAL UYARI:\nBu klavye sadece telifsiz veya kendi içeriğiniz için kullanılmalıdır."
+        android:textSize="10sp"
         android:textColor="#AA0000"
         android:background="#FFF3CD"
         android:padding="10dp"/>
 
 </LinearLayout>
+</ScrollView>
