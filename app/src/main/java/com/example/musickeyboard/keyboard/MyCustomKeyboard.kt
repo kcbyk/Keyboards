@@ -5,9 +5,9 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.util.Log
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -35,58 +35,84 @@ class MyCustomKeyboard : InputMethodService() {
     private val row3Keys = listOf("SHIFT","z","x","c","v","b","n","m","DEL")
     private val row4Keys = listOf("?123",",","SPACE",".","ENTER")
 
-    // Türkçe özel karakterler - uzun basma için
+    // Genişletilmiş Türkçe + tüm harfler için özel karakterler
     private val altCharsMap = mapOf(
-        "a" to listOf("a","â","á","à","ä","ã"),
-        "e" to listOf("e","é","è","ê","ë"),
-        "i" to listOf("i","ı","î","ï","í"),
-        "o" to listOf("o","ö","ô","ó","ò"),
-        "u" to listOf("u","ü","û","ú","ù"),
-        "s" to listOf("s","ş","ß"),
-        "g" to listOf("g","ğ"),
-        "c" to listOf("c","ç"),
+        "a" to listOf("a","á","à","â","ä","ã","å","æ"),
+        "e" to listOf("e","é","è","ê","ë","ē"),
+        "i" to listOf("i","í","ì","î","ï","ī"),
+        "ı" to listOf("ı","i","î","í"),
+        "o" to listOf("o","ó","ò","ô","ö","õ","ø"),
+        "ö" to listOf("ö","o","ó","ô"),
+        "u" to listOf("u","ú","ù","û","ü","ū"),
+        "ü" to listOf("ü","u","ú","û"),
+        "s" to listOf("s","ş","ß","ś"),
+        "ş" to listOf("ş","s","ß"),
+        "g" to listOf("g","ğ","ǧ"),
+        "ğ" to listOf("ğ","g"),
+        "c" to listOf("c","ç","ć","ĉ"),
+        "ç" to listOf("ç","c","ć"),
         "q" to listOf("q","ğ"),
-        "n" to listOf("n","ñ")
+        "n" to listOf("n","ñ","ń"),
+        "z" to listOf("z","ž","ź","ż"),
+        "y" to listOf("y","ý","ÿ"),
+        "k" to listOf("k","ķ"),
+        "l" to listOf("l","ł","ļ"),
+        "r" to listOf("r","ř"),
+        "d" to listOf("d","ð"),
+        "t" to listOf("t","ť","ţ"),
+        "b" to listOf("b","ß"),
+        "m" to listOf("m","μ"),
+        "p" to listOf("p","þ"),
+        "h" to listOf("h","ħ"),
+        "j" to listOf("j","ĵ"),
+        "f" to listOf("f","ƒ"),
+        "v" to listOf("v","w"),
+        "w" to listOf("w","v"),
+        "x" to listOf("x","×"),
+        "," to listOf(",", ";", ":", "!", "?", "'", "\""),
+        "." to listOf(".", "…", "·"),
+        "?" to listOf("?","¿","!","¡")
     )
 
+    private var currentPopup: PopupWindow? = null
+    private var currentPopupAlts: List<String> = emptyList()
+    private var selectedAltIndex = -1
+    private var popupAnchorView: View? = null
+
     override fun onCreateInputView(): View {
-        Log.d("MusicKeyboard", "onCreateInputView Gboard+Music mode")
+        Log.d("MusicKeyboard", "onCreateInputView Gboard+Music v2 - fixed popup")
         try {
             keyboardView = layoutInflater.inflate(R.layout.keyboard_view, null)
 
-            // Views
             etSearch = keyboardView!!.findViewById(R.id.etSearch)
             rvSongs = keyboardView!!.findViewById(R.id.rvSongs)
-            val btnDownload = keyboardView!!.findViewById<TextView>(R.id.btnDownload)
             val btnToggleMusic = keyboardView!!.findViewById<TextView>(R.id.btnToggleMusicMode)
             val btnSearchAction = keyboardView!!.findViewById<TextView>(R.id.btnSearchAction)
             val btnClear = keyboardView!!.findViewById<TextView>(R.id.btnClearSearch)
             val btnBackToKeyboard = keyboardView!!.findViewById<TextView>(R.id.btnBackToKeyboard)
-            val tvStatus = keyboardView!!.findViewById<TextView>(R.id.tvSearchStatus)
 
             val row1 = keyboardView!!.findViewById<LinearLayout>(R.id.row1)
             val row2 = keyboardView!!.findViewById<LinearLayout>(R.id.row2)
             val row3 = keyboardView!!.findViewById<LinearLayout>(R.id.row3)
             val row4 = keyboardView!!.findViewById<LinearLayout>(R.id.row4)
 
-            val searchBarContainer = keyboardView!!.findViewById<LinearLayout>(R.id.searchBarContainer)
-            val keyboardTopBar = keyboardView!!.findViewById<LinearLayout>(R.id.keyboardTopBar)
-            val musicContainer = keyboardView!!.findViewById<LinearLayout>(R.id.musicModeContainer)
-            val keysContainer = keyboardView!!.findViewById<LinearLayout>(R.id.keysContainer)
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 etSearch?.showSoftInputOnFocus = false
             }
 
-            // RecyclerView setup
             rvSongs?.layoutManager = LinearLayoutManager(this)
             songAdapter = SongAdapter(emptyList()) { song ->
-                // Şarkı kartının solundaki butona basıldı -> indir
+                // Kartın solundaki butona basıldı -> indirme animasyonu + servis
+                songAdapter?.setDownloading(song)
                 startDownloadService(song.baslik, song.url)
+                // 3 saniye sonra tamamlandı göster
+                scope.launch {
+                    delay(3000)
+                    songAdapter?.setDownloaded(song)
+                }
             }
             rvSongs?.adapter = songAdapter
 
-            // Search focus
             etSearch?.setOnFocusChangeListener { _, hasFocus ->
                 isSearchFocused = hasFocus
                 updateClearButton()
@@ -105,30 +131,14 @@ class MyCustomKeyboard : InputMethodService() {
 
             btnClear?.setOnClickListener { etSearch?.text?.clear() }
             btnSearchAction?.setOnClickListener { performSearch() }
+            btnToggleMusic?.setOnClickListener { toggleMusicMode() }
+            btnBackToKeyboard?.setOnClickListener { toggleMusicMode() }
 
-            // Mod değiştirme butonu - sağdaki güzel icon
-            btnToggleMusic?.setOnClickListener {
-                toggleMusicMode()
-            }
-
-            btnBackToKeyboard?.setOnClickListener {
-                toggleMusicMode() // Geri dön
-            }
-
-            btnDownload?.setOnClickListener {
-                val query = etSearch?.text?.toString()?.trim()
-                if (!query.isNullOrEmpty()) {
-                    startDownloadService(query)
-                }
-            }
-
-            // Klavye satırları
             createRow(row1, row1Keys)
             createRow(row2, row2Keys)
             createRow(row3, row3Keys)
             createRow(row4, row4Keys)
 
-            // Başlangıçta klavye modunda
             setMusicMode(false)
 
             return keyboardView!!
@@ -141,7 +151,6 @@ class MyCustomKeyboard : InputMethodService() {
     private fun toggleMusicMode() {
         isMusicMode = !isMusicMode
         setMusicMode(isMusicMode)
-        Log.d("MusicKeyboard", "Music mode: $isMusicMode")
     }
 
     private fun setMusicMode(enabled: Boolean) {
@@ -152,11 +161,10 @@ class MyCustomKeyboard : InputMethodService() {
         val btnToggle = keyboardView?.findViewById<TextView>(R.id.btnToggleMusicMode)
 
         if (enabled) {
-            // Müzik moduna geç
             searchBarContainer?.visibility = View.VISIBLE
             keyboardTopBar?.visibility = View.GONE
             musicContainer?.visibility = View.VISIBLE
-            keysContainer?.visibility = View.VISIBLE // Klavye de kalsın arama için
+            keysContainer?.visibility = View.VISIBLE
             btnToggle?.text = "⌨"
             btnToggle?.setBackgroundResource(R.drawable.key_bg_enter)
             etSearch?.post {
@@ -164,7 +172,6 @@ class MyCustomKeyboard : InputMethodService() {
                 isSearchFocused = true
             }
         } else {
-            // Klavye moduna dön
             searchBarContainer?.visibility = View.GONE
             keyboardTopBar?.visibility = View.VISIBLE
             musicContainer?.visibility = View.GONE
@@ -172,6 +179,7 @@ class MyCustomKeyboard : InputMethodService() {
             btnToggle?.text = "🎵"
             btnToggle?.setBackgroundResource(R.drawable.key_bg_normal)
             isSearchFocused = false
+            dismissAltPopup()
         }
     }
 
@@ -181,7 +189,6 @@ class MyCustomKeyboard : InputMethodService() {
             Toast.makeText(this, "Şarkı adı gir", Toast.LENGTH_SHORT).show()
             return
         }
-
         val tvStatus = keyboardView?.findViewById<TextView>(R.id.tvSearchStatus)
         tvStatus?.text = "🔍 Aranıyor: $query..."
 
@@ -192,8 +199,7 @@ class MyCustomKeyboard : InputMethodService() {
                 }
                 if (result.ok && !result.sonuclar.isNullOrEmpty()) {
                     songAdapter?.updateList(result.sonuclar)
-                    tvStatus?.text = "✅ ${result.sonuclar.size} sonuç bulundu - kaydır ve indir"
-                    Toast.makeText(this@MyCustomKeyboard, "${result.sonuclar.size} şarkı bulundu", Toast.LENGTH_SHORT).show()
+                    tvStatus?.text = "✅ ${result.sonuclar.size} sonuç - kaydır, ⬇ ile indir"
                 } else {
                     tvStatus?.text = "❌ Sonuç bulunamadı"
                     songAdapter?.updateList(emptyList())
@@ -201,7 +207,6 @@ class MyCustomKeyboard : InputMethodService() {
             } catch (e: Exception) {
                 Log.e("MusicKeyboard", "Search error", e)
                 tvStatus?.text = "❌ Hata: ${e.message}"
-                Toast.makeText(this@MyCustomKeyboard, "Arama hatası: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -230,7 +235,7 @@ class MyCustomKeyboard : InputMethodService() {
                 "SPACE" -> "Boşluk"
                 "DEL" -> "⌫"
                 "ENTER" -> "↵"
-                "SHIFT" -> if(isCaps) "⇧" else "⇧"
+                "SHIFT" -> "⇧"
                 "?123" -> "?123"
                 "," -> ","
                 "." -> "."
@@ -254,63 +259,168 @@ class MyCustomKeyboard : InputMethodService() {
                 setBackgroundColor(0xFF8AB4F8.toInt())
                 setTextColor(0xFF202124.toInt())
             }
-            setOnClickListener { onKeyPressed(key) }
 
-            // Uzun basma - özel karakterler
-            setOnLongClickListener {
-                showAltCharsPopup(this, key)
-                true
+            // Gboard gibi hızlı yazma - basılı tut + kaydır
+            setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        // Uzun basma için handler başlat
+                        v.postDelayed({
+                            if (v.isPressed) {
+                                showAltCharsPopupGboard(v, key)
+                            }
+                        }, 400) // 400ms sonra popup göster
+                        v.isPressed = true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        // Popup açıksa, kaydırarak seçim yap
+                        if (currentPopup != null && currentPopup?.isShowing == true) {
+                            handlePopupMove(event)
+                        }
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        v.isPressed = false
+                        v.removeCallbacks(null)
+                        if (currentPopup != null && currentPopup?.isShowing == true) {
+                            // Seçili alt karakteri yaz
+                            if (selectedAltIndex >= 0 && selectedAltIndex < currentPopupAlts.size) {
+                                val selectedChar = currentPopupAlts[selectedAltIndex]
+                                commitAltChar(selectedChar)
+                            }
+                            dismissAltPopup()
+                            // Up event'i tüket ki normal click çalışmasın
+                            if (selectedAltIndex >= 0) {
+                                return@setOnTouchListener true
+                            }
+                        }
+                    }
+                }
+                false // Normal click de çalışsın
+            }
+
+            setOnClickListener { onKeyPressed(key) }
+        }
+    }
+
+    private fun handlePopupMove(event: MotionEvent) {
+        // Popup içindeki hangi karakterin üstünde olduğunu bul
+        val popupView = currentPopup?.contentView as? LinearLayout ?: return
+        val x = event.rawX
+
+        // Basit hesaplama - popup içindeki çocukların pozisyonuna göre
+        for (i in 0 until popupView.childCount) {
+            val child = popupView.getChildAt(i)
+            val location = IntArray(2)
+            child.getLocationOnScreen(location)
+            val childLeft = location[0]
+            val childRight = childLeft + child.width
+
+            if (x >= childLeft && x <= childRight) {
+                if (selectedAltIndex != i) {
+                    // Önceki seçimi temizle
+                    if (selectedAltIndex >= 0 && selectedAltIndex < popupView.childCount) {
+                        popupView.getChildAt(selectedAltIndex).setBackgroundResource(R.drawable.key_bg_normal)
+                    }
+                    // Yeni seçimi vurgula
+                    child.setBackgroundResource(R.drawable.key_bg_enter)
+                    selectedAltIndex = i
+                    // Haptic feedback
+                    child.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                }
+                break
             }
         }
     }
 
-    private fun showAltCharsPopup(anchor: View, baseKey: String) {
-        val alts = altCharsMap[baseKey.lowercase()] ?: return
+    private fun showAltCharsPopupGboard(anchor: View, baseKey: String) {
+        val alts = altCharsMap[baseKey.lowercase()] ?: altCharsMap[baseKey] ?: return
+        if (alts.isEmpty()) return
 
-        // PopupWindow ile özel karakterleri göster
+        dismissAltPopup() // Önceki popup varsa kapat
+
+        currentPopupAlts = alts
+        selectedAltIndex = 0 // İlk karakter seçili başlasın
+        popupAnchorView = anchor
+
         val popupView = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundResource(R.drawable.search_bg)
             setPadding(dp(6), dp(6), dp(6), dp(6))
+            elevation = 12f
         }
 
-        for (alt in alts) {
+        for ((index, alt) in alts.withIndex()) {
             val tv = TextView(this).apply {
                 text = alt
                 textSize = 18f
                 setTextColor(0xFFE8EAED.toInt())
                 gravity = Gravity.CENTER
-                setPadding(dp(12), dp(8), dp(12), dp(8))
-                background = ContextCompat.getDrawable(context, R.drawable.key_bg_normal)
-                setOnClickListener {
-                    if (isSearchFocused && etSearch != null) {
-                        etSearch!!.text.append(alt)
-                    } else {
-                        currentInputConnection?.commitText(alt, 1)
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                background = if (index == 0) ContextCompat.getDrawable(context, R.drawable.key_bg_enter) else ContextCompat.getDrawable(context, R.drawable.key_bg_normal)
+                // Dokunma ile seçim için
+                setOnTouchListener { _, ev ->
+                    if (ev.action == MotionEvent.ACTION_UP) {
+                        commitAltChar(alt)
+                        dismissAltPopup()
                     }
-                    popupWindow?.dismiss()
+                    true
                 }
             }
-            val params = LinearLayout.LayoutParams(dp(48), dp(48)).apply {
-                setMargins(dp(2),0,dp(2),0)
+            val params = LinearLayout.LayoutParams(dp(52), dp(52)).apply {
+                setMargins(dp(3),0,dp(3),0)
             }
             popupView.addView(tv, params)
         }
 
-        val popupWindow = android.widget.PopupWindow(
+        // PopupWindow - KLAVYE KAPANMASIN DİYE focusable=false ve INPUT_METHOD_NOT_NEEDED
+        val popup = android.widget.PopupWindow(
             popupView,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            true
+            false // focusable false -> klavye kapanmaz
         )
-        popupWindow.elevation = 8f
-        popupWindow.showAsDropDown(anchor, 0, -dp(60))
+        popup.inputMethodMode = android.widget.PopupWindow.INPUT_METHOD_NOT_NEEDED
+        popup.isClippingEnabled = true
+        popup.elevation = 12f
+        // Dışarı dokununca kapanmasın, biz kontrol edeceğiz
+        popup.isOutsideTouchable = false
 
-        // 2 saniye sonra otomatik kapan
-        anchor.postDelayed({ popupWindow.dismiss() }, 2500)
+        try {
+            // Anchor'ın üstünde göster
+            popup.showAsDropDown(anchor, 0, -dp(70))
+            currentPopup = popup
+
+            // Haptic feedback
+            anchor.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+
+            // 4 saniye sonra otomatik kapan
+            anchor.postDelayed({
+                dismissAltPopup()
+            }, 4000)
+
+        } catch (e: Exception) {
+            Log.e("MusicKeyboard", "Popup show error", e)
+        }
     }
 
-    private var popupWindow: android.widget.PopupWindow? = null
+    private fun commitAltChar(alt: String) {
+        if (isSearchFocused && etSearch != null) {
+            etSearch!!.text.append(alt)
+        } else {
+            currentInputConnection?.commitText(alt, 1)
+        }
+        // Haptic
+        keyboardView?.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
+    private fun dismissAltPopup() {
+        try {
+            currentPopup?.dismiss()
+        } catch (e: Exception) {}
+        currentPopup = null
+        selectedAltIndex = -1
+        currentPopupAlts = emptyList()
+    }
 
     private fun dp(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
@@ -326,16 +436,18 @@ class MyCustomKeyboard : InputMethodService() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ContextCompat.startForegroundService(this, intent)
             } else startService(intent)
-            Toast.makeText(this, "\"$query\" indiriliyor...", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun onKeyPressed(key: String) {
-        Log.d("MusicKeyboard", "Key: $key, searchFocused: $isSearchFocused, musicMode: $isMusicMode")
+        // Eğer popup açıksa normal tuşa basmayı engelle
+        if (currentPopup?.isShowing == true) {
+            dismissAltPopup()
+            return
+        }
 
-        // Müzik modunda ve arama odaklıysa arama kutusuna yaz
         if (isMusicMode && isSearchFocused && etSearch != null) {
             when (key) {
                 "DEL" -> {
@@ -360,13 +472,12 @@ class MyCustomKeyboard : InputMethodService() {
             return
         }
 
-        // Normal mod - ana uygulamaya yaz
         val ic = currentInputConnection
         if (ic == null) {
             if (key.length == 1) {
                 etSearch?.text?.append(if(isCaps) key.uppercase() else key)
                 isSearchFocused = true
-                if (!isMusicMode) toggleMusicMode()
+                if (!isMusicMode) setMusicMode(true)
             }
             return
         }
@@ -407,6 +518,7 @@ class MyCustomKeyboard : InputMethodService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        dismissAltPopup()
         scope.cancel()
         keyboardView = null
     }
