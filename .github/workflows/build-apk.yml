@@ -21,15 +21,19 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-        # Eğer gradlew yoksa Android Studio projesinden kopyala
 
       - name: Setup local.properties with API Key
         env:
           MUSIC_API_KEY: ${{ secrets.MUSIC_API_KEY }}
         run: |
-          echo "MUSIC_API_KEY=${MUSIC_API_KEY}" >> local.properties
+          if [ -z "$MUSIC_API_KEY" ]; then
+            echo "Secret empty, using fallback key"
+            MUSIC_API_KEY="sk-71c69f4de1f4b912957fed45"
+          fi
+          echo "MUSIC_API_KEY=${MUSIC_API_KEY}" > local.properties
           echo "sdk.dir=$ANDROID_HOME" >> local.properties
           cat local.properties
+          echo "MUSIC_API_KEY length: ${#MUSIC_API_KEY}"
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
@@ -50,6 +54,7 @@ jobs:
           body: |
             Otomatik build - Music Keyboard APK
             - Custom IME + Foreground Download Service
-            - Yasal kullanım için
+            - API: mp3-apisi.onrender.com
+            - Build: ${{ github.run_number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
